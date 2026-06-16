@@ -33158,7 +33158,7 @@ var mock = [
 ];
 
 function toRegex(pat) {
-  return pat.split('*').map(str => RegExp.escape(str)).join('[^.]*')
+  return pat.split('*').map(str => RegExp.escape(str)).join('[^./]*')
 }
 
 function hashCode(str) {
@@ -33281,7 +33281,7 @@ async function getViolations(fileContents, fileName) {
               artifactLocation: {
                 uri: `${fileName}`
               },
-              region: { startLine, startColumn, endLine, endColumn },
+              region: { startLine, startColumn, endLine, endColumn: endColumn + 1 },
             }
           }
         ]

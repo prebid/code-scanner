@@ -1,7 +1,7 @@
 import { default as mock } from '../patterns/mock.json' with { type: 'json' };
 
 function toRegex(pat) {
-  return pat.split('*').map(str => RegExp.escape(str)).join('[^.]*')
+  return pat.split('*').map(str => RegExp.escape(str)).join('[^./]*')
 }
 
 function hashCode(str) {
