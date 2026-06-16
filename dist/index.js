@@ -33185,9 +33185,9 @@ function newReport(groups) {
 
 async function scan(patterns, globs, ignores, root, whitelist) {
   root = path.resolve(root ?? '.');
-  ignores = ignores.split(',').map(ign => path.join(root, ign));
+  ignores = ignores && ignores.split(',').map(ign => path.join(root, ign));
   globs = globs.split(',').map(pat => path.join(root, pat));
-  console.info('Starting scan', { glob: globs, ignore: ignores });
+  console.info('Starting scan', { glob: globs, ignore: ignores, dot: true });
   const report = newReport(patterns.groups);
   for (const pattern of globs) {
     for (const fname of await Ze(pattern, { ignore: ignores })) {
@@ -38377,6 +38377,9 @@ try {
     ref,
     sarif: await encode(JSON.stringify(report))
   }));
+  if (report.runs[0].results.length > 0) {
+    setFailed(`Found ${report.runs[0].results.length} violations`);
+  }
 } catch (error) {
   setFailed(error.message);
 }
