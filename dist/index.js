@@ -33273,7 +33273,7 @@ async function getViolations(fileContents, fileName) {
         },
         ruleId: pat.group,
         partialFingerprints: {
-          'blocked/v1': `${fileName}/${pat.group}/${pat.hash}`
+          'primaryLocationLineHash': `${fileName}/${pat.group}/${pat.hash}`
         },
         locations: [
           {
@@ -33281,7 +33281,7 @@ async function getViolations(fileContents, fileName) {
               artifactLocation: {
                 uri: `${fileName}`
               },
-              region: { startLine, startColumn, endLine, endColumn: endColumn + 1 },
+              region: { startLine, startColumn: startColumn + 1, endLine, endColumn: endColumn + 1 },
             }
           }
         ]
