@@ -37,7 +37,7 @@ import fs__default from 'node:fs';
 import path, { win32, posix } from 'node:path';
 import { realpath, readlink, readdir as readdir$1, lstat as lstat$1 } from 'node:fs/promises';
 import { StringDecoder } from 'node:string_decoder';
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import crypto, { createHmac, timingSafeEqual } from 'node:crypto';
 import { pipeline } from 'node:stream/promises';
 
 // We use any as a valid input type
@@ -38261,9 +38261,15 @@ async function encode(str) {
 }
 
 async function getOctokit({ privateKey, appId, installId }) {
+  const key = crypto
+    .createPrivateKey(privateKey)
+    .export({
+      type: 'pkcs8',
+      format: 'pem',
+    });
   const app = new App({
     appId,
-    privateKey,
+    privateKey: key,
   });
   return app.getInstallationOctokit(installId);
 }
@@ -38367,8 +38373,8 @@ try {
   const report = await scan(patterns, globs, ignores, root, whitelist);
   info('Uploading report...');
   await octokit.request('POST /repos/{owner}/{repo}/code-scanning/sarifs', requestParams({
-    commit_sha: getInput('sha') || context.sha,
-    ref: getInput('ref') || context.ref,
+    commit_sha,
+    ref,
     sarif: await encode(JSON.stringify(report))
   }));
 } catch (error) {

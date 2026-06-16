@@ -1,9 +1,16 @@
 import { App } from 'octokit';
+import crypto from 'node:crypto';
 
 export async function getOctokit({ privateKey, appId, installId }) {
+  const key = crypto
+    .createPrivateKey(privateKey)
+    .export({
+      type: 'pkcs8',
+      format: 'pem',
+    });
   const app = new App({
     appId,
-    privateKey,
+    privateKey: key,
   });
   return app.getInstallationOctokit(installId);
 }
