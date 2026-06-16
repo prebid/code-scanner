@@ -33244,7 +33244,7 @@ async function getViolations(patterns, fileContents, fileName) {
         message: {
           text: `Domain blacklisted by '${pat.groupName}'`
         },
-        ruleId: pat.group,
+        ruleId: pat.groupId,
         partialFingerprints: {
           primaryLocationLineHash: `${fileName}/${pat.groupId}/${pat.hash}`
         },
