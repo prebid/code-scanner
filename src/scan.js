@@ -30,12 +30,12 @@ function newReport(groups) {
 
 export async function scan(patterns, globs, ignores, root, whitelist) {
   root = path.resolve(root ?? '.');
-  ignores = ignores && ignores.split(',').map(ign => path.join(root, ign));
+  ignores = ignores ?  ignores.split(',').map(ign => path.join(root, ign)) : [];
   globs = globs.split(',').map(pat => path.join(root, pat));
-  console.info('Starting scan', { glob: globs, ignore: ignores, dot: true });
+  console.info('Starting scan', { glob: globs, ignore: ignores});
   const report = newReport(patterns.groups);
   for (const pattern of globs) {
-    for (const fname of await glob(pattern, { ignore: ignores })) {
+    for (const fname of await glob(pattern, { ignore: ignores, dot: true })) {
       if ((whitelist == null || whitelist.has(fname)) && (await fs.promises.lstat(fname)).isFile()) {
         await scanFile(patterns, root, path.relative(root, fname), report);
       }
