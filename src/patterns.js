@@ -15,15 +15,20 @@ function hashCode(str) {
 }
 
 export function getPatterns() {
+  const groups = new Set();
   const patterns = mock.map(pat => ['mock', pat])
-    .map(([group, rawPattern], i) => ({
-      group,
-      rawPattern,
-      pattern: toRegex(rawPattern),
-      hash: hashCode(rawPattern)
-    }));
+    .map(([group, rawPattern], i) => {
+      groups.add(group);
+      return {
+        group,
+        rawPattern,
+        pattern: toRegex(rawPattern),
+        hash: hashCode(rawPattern)
+      };
+    });
   const master = new RegExp(`(${patterns.map(pat => pat.pattern).join('|')})`, 'gi');
   return {
+    groups: Array.from(groups),
     master,
     patterns: patterns.map(pat => Object.assign(pat, {pattern: new RegExp(pat.pattern, 'gi')})),
   }

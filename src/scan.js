@@ -3,27 +3,25 @@ import path from 'node:path';
 import { glob } from 'glob';
 import { getPatterns } from './patterns.js';
 
-const { master, patterns } = getPatterns();
+const { groups, master, patterns } = getPatterns();
 
 function newReport() {
   return {
     'version': '2.1.0',
-    '$schema': 'http://json.schemastore.org/sarif-2.1.0-rtm.4',
+    '$schema': 'https://json.schemastore.org/sarif-2.1.0.json',
     'runs': [
       {
         'tool': {
           'driver': {
             'name': 'PrebidCodeScanner',
             'informationUri': 'https://github.com/prebid/code-scanner',
-            'rules': [
-              {
-                'id': 'blocked',
-                'shortDescription': {
-                  'text': 'Flag blacklisted domains'
-                },
-                'helpUri': 'https://github.com/prebid/code-scanner'
-              }
-            ]
+            'rules': groups.map(group => ({
+              'id': group,
+              'shortDescription': {
+                'text': `Domain flagged by '${group}'`
+              },
+              'helpUri': 'https://github.com/prebid/code-scanner'
+            }))
           }
         },
         artifacts: [],
@@ -61,11 +59,16 @@ async function scanFile(root, fname, report) {
     location: {
       uri: `${fname}`
     }
-  }))
+  }));
   contents = contents.toString();
   if (master.test(contents)) {
-    report.runs[0].results.push(...(await getViolations(contents, fname)))
+    report.runs[0].results.push(...(await getViolations(contents, fname)));
   }
+}
+
+function getPosition(str) {
+  const lines = str.split(/\r?\n/);
+  return [lines.length, lines[lines.length - 1].length];
 }
 
 async function getViolations(fileContents, fileName) {
@@ -73,25 +76,24 @@ async function getViolations(fileContents, fileName) {
   for (const pat of patterns) {
     const match = pat.pattern.exec(fileContents);
     if (match != null) {
+      const [startLine, startColumn] = getPosition(fileContents.substring(0, match.index));
+      const [endLine, endColumn] = getPosition(fileContents.substring(0, match.index + match[0].length));
       violations.push({
         level: 'error',
         message: {
           text: `Domain blacklisted by '${pat.group}'`
         },
-        ruleId: 'blocked',
+        ruleId: pat.group,
+        partialFingerprints: {
+          'blocked/v1': `${fileName}/${pat.group}/${pat.hash}`
+        },
         locations: [
           {
             physicalLocation: {
               artifactLocation: {
                 uri: `${fileName}`
               },
-              region: {
-                charOffset: match.index,
-                charLength: match[0].length
-              },
-              partialFingerprints: {
-                'blocked/v1': `${fileName}/${pat.group}/${pat.hash}`
-              }
+              region: { startLine, startColumn, endLine, endColumn },
             }
           }
         ]
