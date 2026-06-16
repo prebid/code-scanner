@@ -33323,7 +33323,7 @@ try {
     repo: context.repo.repo,
     commit_sha: getInput('sha') || context.sha,
     ref: getInput('ref') || context.ref,
-    sarif: encode(JSON.stringify(report))
+    sarif: await encode(JSON.stringify(report))
   });
 } catch (error) {
   setFailed(error.message);
