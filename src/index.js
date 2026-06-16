@@ -40,7 +40,7 @@ try {
     core.info(`Scanning only files touched in #${prNo}`);
     const params = requestParams({ prNo });
     const pr = await octokit.request('GET /repos/{owner}/{repo}/pulls/{prNo}', params);
-    const files = await octokit.request('GET /repos/{owner}/{repo}/pulls/{pull_number}/files?per_page=100', params)
+    const files = await octokit.request('GET /repos/{owner}/{repo}/pulls/{prNo}/files?per_page=100', params)
     commit_sha = pr.data.head.sha;
     ref = `refs/pull/${prNo}/head`;
     whitelist = files.data.length >= 100 ? null : new Set(files.data.map(({filename}) => filename));
