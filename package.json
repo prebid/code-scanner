@@ -1,0 +1,32 @@
+{
+  "name": "code-scanner",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/prebid/code-scanner.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/prebid/code-scanner/issues"
+  },
+  "homepage": "https://github.com/prebid/code-scanner#readme",
+  "devDependencies": {
+    "@actions/core": "^3.0.1",
+    "@actions/exec": "^3.0.0",
+    "@actions/github": "^9.1.1",
+    "@rollup/plugin-commonjs": "^29.0.3",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "chardet": "^2.1.1",
+    "glob": "^13.0.6",
+    "rollup": "^4.61.1"
+  }
+}

@@ -1,0 +1,21 @@
+name: "Prebid Code Scanner"
+description: "Scan code for suspect patterns submitted by Prebid member companies"
+branding:
+  icon: "check-circle"
+  color: "yellow"
+inputs:
+  patterns:
+    description: Glob patterns to scan, comma-separated
+    required: false
+    default: "**/*"
+  ignores:
+    description: Glob patterns to ignore, comma-separated
+    required: false
+    default: ''
+  root:
+    description: Source root
+    required: false
+    default: '.'
+runs:
+  using: "node24"
+  main: "dist/index.js"
