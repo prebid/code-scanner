@@ -28249,6 +28249,14 @@ function error(message, properties = {}) {
     issueCommand('error', toCommandProperties(properties), message instanceof Error ? message.toString() : message);
 }
 /**
+ * Adds a warning issue
+ * @param message warning issue message. Errors will be converted to string via toString()
+ * @param properties optional properties to add to the annotation.
+ */
+function warning(message, properties = {}) {
+    issueCommand('warning', toCommandProperties(properties), message instanceof Error ? message.toString() : message);
+}
+/**
  * Writes info to log with console.log.
  * @param message info message
  */
@@ -38378,7 +38386,7 @@ try {
     sarif: await encode(JSON.stringify(report))
   }));
   if (report.runs[0].results.length > 0) {
-    setFailed(`Found ${report.runs[0].results.length} violations`);
+    warning(`Found ${report.runs[0].results.length} violations`);
   }
 } catch (error) {
   setFailed(error.message);

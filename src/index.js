@@ -53,7 +53,7 @@ try {
     sarif: await encode(JSON.stringify(report))
   }));
   if (report.runs[0].results.length > 0) {
-    core.setFailed(`Found ${report.runs[0].results.length} violations`);
+    core.warning(`Found ${report.runs[0].results.length} violations`);
   }
 } catch (error) {
   core.setFailed(error.message);
