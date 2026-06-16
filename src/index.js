@@ -48,8 +48,8 @@ try {
   const report = await scan(patterns, globs, ignores, root, whitelist);
   core.info('Uploading report...');
   await octokit.request('POST /repos/{owner}/{repo}/code-scanning/sarifs', requestParams({
-    commit_sha: core.getInput('sha') || github.context.sha,
-    ref: core.getInput('ref') || github.context.ref,
+    commit_sha,
+    ref,
     sarif: await encode(JSON.stringify(report))
   }));
 } catch (error) {
