@@ -33199,8 +33199,9 @@ async function scan(patterns, globs, ignores, root, whitelist) {
   const report = newReport(patterns.groups);
   for (const pattern of globs) {
     for (const fname of await Ze(pattern, { ignore: ignores, dot: true })) {
-      if ((whitelist == null || whitelist.has(fname)) && (await fs__default.promises.lstat(fname)).isFile()) {
-        await scanFile(patterns, root, path.relative(root, fname), report);
+      const relFile = path.relative(root, fname);
+      if ((whitelist == null || whitelist.has(relFile)) && (await fs__default.promises.lstat(fname)).isFile()) {
+        await scanFile(patterns, root, relFile, report);
       }
     }
   }
