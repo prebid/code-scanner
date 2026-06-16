@@ -33172,7 +33172,6 @@ function hashCode(str) {
 
 function getPatterns() {
   const patterns = mock.map(pat => ['mock', pat])
-    .concat(confiant.map(pat => ['confiant', pat]))
     .map(([group, rawPattern], i) => ({
       group,
       rawPattern,
