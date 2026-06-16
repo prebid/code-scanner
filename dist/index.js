@@ -33242,7 +33242,7 @@ async function scanFile(root, fname, report) {
   console.log(`Scanning ${fname}...`);
   report.runs[0].artifacts.push(({
     location: {
-      uri: `file://${fname}`
+      uri: `file://./${fname}`
     }
   }));
   contents = contents.toString();
@@ -33266,7 +33266,7 @@ async function getViolations(fileContents, fileName) {
           {
             physicalLocation: {
               artifactLocation: {
-                uri: `file://${fileName}`
+                uri: `file://./${fileName}`
               },
               region: {
                 charOffset: match.index,
