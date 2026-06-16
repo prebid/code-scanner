@@ -19,14 +19,16 @@ inputs:
     description: Source root
     required: false
     default: '.'
-  ref:
-    description: Git reference
-    required: false
-    default: ''
-  sha:
-    description: Commit SHA
-    required: false
-    default: ''
+  pem:
+    description: App secret
+    required: true
+  appId:
+    description: App ID
+    required: true
+  installationId:
+    description: App installation Id
+    required: true
+
 runs:
   using: "node24"
   main: "dist/index.js"
