@@ -18,7 +18,7 @@ try {
     repo: github.context.repo.repo,
     commit_sha: core.getInput('sha') || github.context.sha,
     ref: core.getInput('ref') || github.context.ref,
-    sarif: encode(JSON.stringify(report))
+    sarif: await encode(JSON.stringify(report))
   });
 } catch (error) {
   core.setFailed(error.message);
