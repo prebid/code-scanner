@@ -34,7 +34,7 @@ try {
   let whitelist;
   if (prNo == null) {
     commit_sha = github.context.sha;
-    ref = gihub.context.ref;
+    ref = github.context.ref;
     whitelist = null;
   } else {
     core.info(`Scanning only files touched in #${prNo}`);
