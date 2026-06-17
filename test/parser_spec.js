@@ -95,15 +95,15 @@ describe('parser', () => {
       ];
       const combined = combine(patterns)();
       const result = feed(combined, ['test', '.', 'com']);
-      expect(result.done).to.be.true;
-      expect(result.value.match.id).to.equal(2);
+      expect(result.done).to.be.false;
+      expect(result.value[0].match.id).to.equal(2);
     });
     it('keeps track of lines and columns', () => {
       const patterns = [{ pattern: compile('test.com') }];
       const combined = combine(patterns)();
       const result = feed(combined, ['ignore', '\n', 'ignore', '\r', 'test', '.', 'com']);
-      expect(result.done).to.be.true;
-      expect(result.value).to.eql({
+      expect(result.done).to.be.false;
+      expect(result.value).to.eql([{
         match: patterns[0],
         position: {
           startLine: 2,
@@ -111,8 +111,32 @@ describe('parser', () => {
           endLine: 2,
           endColumn: 16
         }
-      });
+      }]);
     });
+    it('keeps matching for all patterns', () => {
+      const combined = combine([
+        {id: 1, pattern: compile('test.com')},
+        {id: 2, pattern: compile('test.com.au')},
+      ])();
+
+      let result = feed(combined, ['filler', '?', 'test', '.', 'com']);
+      expect(result.value.length).to.eql(1);
+      expect(result.value[0].match.id).to.eql(1);
+      result = feed(combined, ['.', 'au']);
+      expect(result.value.length).to.eql(1);
+      expect(result.value[0].match.id).to.eql(2);
+    });
+
+    it('can match multiple patterns simultaneously', () => {
+      const patterns = [
+        {id: 1, pattern: compile('test.com')},
+        {id: 2, pattern: compile('test.com')}
+      ];
+      const combined = combine(patterns)();
+      const result = feed(combined, ['test', '.', 'com']);
+      expect(result.value.map(({match}) => match)).to.eql(patterns);
+      expect(result.value[0].location).to.eql(result.value[1].location);
+    })
   });
 
   class DummyReader extends Readable {
@@ -173,12 +197,12 @@ describe('parser', () => {
     it('can scan for patterns', async () => {
       const stream = new DummyReader([Buffer.from('filler\ntest.com\nfiller', 'utf-8'), Buffer.from('hello', 'utf-8')]);
       const pattern = compile('test.com')();
-      expect(await parse(stream, pattern)).to.eql(2);
+      expect(await parse(stream, pattern)).to.eql([2]);
     });
-    it('resolves to null on no match',  async () => {
+    it('resolves on no match',  async () => {
       const stream = new DummyReader(Buffer.from('', 'utf-8'));
       const pattern = compile('test.com')();
-      expect(await parse(stream, pattern)).to.eql(null);
+      expect(await parse(stream, pattern)).to.eql([]);
     })
     it('throws BinaryStream on zeroes', async () => {
       const stream = new DummyReader([Buffer.from([0])]);

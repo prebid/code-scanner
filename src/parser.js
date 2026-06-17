@@ -1,4 +1,6 @@
-import { Transform } from 'node:stream';
+import { Writable, Transform } from 'node:stream';
+import {pipeline} from 'node:stream/promises';
+
 
 export function compile(rawPattern) {
   const pattern = rawPattern.toLowerCase().split('.');
@@ -78,20 +80,24 @@ export function combine(patterns, getPattern = (pat) => pat.pattern()) {
   function* parser() {
     const pats = patterns.map(getPattern);
     const counter = lineCounter();
+    const matches = [];
 
     while (true) {
-      const token = yield;
+      const token = yield matches;
+      matches.length = 0;
       const [endLine, endColumn] = counter.next(token).value;
       for (let i = 0; i < pats.length; i++) {
-        const next = pats[i].next(token);
-        if (next.done) {
-          const [startLine, startColumn] = counter.startOf(next.value);
-          return {
+        if (pats[i] == null) continue;
+        const result = pats[i].next(token);
+        if (result.done) {
+          const [startLine, startColumn] = counter.startOf(result.value);
+          matches.push({
             match: patterns[i],
             position: {
               startLine, startColumn, endLine, endColumn
             }
-          };
+          })
+          pats[i] = null;
         }
       }
     }
@@ -139,32 +145,22 @@ export class Tokenize extends Transform {
   }
 }
 
-export function parse(stream, pattern) {
-  return new Promise((resolve, reject) => {
-    const scanner = new class extends Transform {
-      constructor() {
-        super({ objectMode: true });
-      }
-
-      _transform(data, encoding, callback) {
-        const res = pattern.next(data);
-        if (res.done) {
-          stream.destroy();
-          resolve(res.value);
+export async function parse(stream, pattern) {
+  let done = false;
+  const matches = [];
+  const scanner = new Writable({
+    objectMode: true,
+    write(chunk, encoding, callback) {
+      if (!done) {
+        const result = pattern.next(chunk);
+        done = result.done;
+        if (result.value) {
+          matches.push(...(Array.isArray(result.value) ? result.value : [result.value]));
         }
-        callback();
       }
-
-      _flush(callback) {
-        resolve(null);
-        callback();
-      }
-    };
-    stream
-      .on('error', reject)
-      .pipe(new Tokenize())
-      .on('error', reject)
-      .pipe(scanner)
-      .on('error', reject);
-  });
+      callback();
+    }
+  })
+  await pipeline(stream, new Tokenize(), scanner);
+  return matches;
 }

@@ -50,9 +50,9 @@ async function scanFile(patterns, root, fname, report) {
   console.log(`Scanning ${fname}...`);
   const fullPath = path.resolve(root, fname);
   const contents = fs.createReadStream(fullPath);
-  let match = null;
+  let matches = [];
   try {
-    match = await parse(contents, patterns.pattern());
+    matches = await parse(contents, patterns.pattern());
   } catch (e) {
     if (e instanceof BinaryStream) {
       console.log(`${fname} appears to be a binary file, skipping`);
@@ -65,8 +65,8 @@ async function scanFile(patterns, root, fname, report) {
       uri: `${fname}`
     }
   }));
-  if (match != null) {
-    report.runs[0].results.push(getResult(match, fname));
+  if (matches.length > 0) {
+    report.runs[0].results.push(...matches.map(match => getResult(match, fname)));
   }
 }
 
