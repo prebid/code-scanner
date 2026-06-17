@@ -14,7 +14,7 @@ import require$$6 from 'util';
 import require$$0$1 from 'node:assert';
 import require$$0$3 from 'node:net';
 import require$$2 from 'node:http';
-import require$$0$2, { Transform, Readable, Writable } from 'node:stream';
+import require$$0$2, { Writable, Transform, Readable } from 'node:stream';
 import require$$0, { Buffer as Buffer$1 } from 'node:buffer';
 import require$$0$4 from 'node:util';
 import require$$7 from 'node:querystring';
@@ -37,8 +37,8 @@ import fs__default from 'node:fs';
 import path, { win32, posix } from 'node:path';
 import { realpath, readlink, readdir as readdir$1, lstat as lstat$1 } from 'node:fs/promises';
 import { StringDecoder } from 'node:string_decoder';
-import crypto, { createHmac, timingSafeEqual } from 'node:crypto';
 import { pipeline } from 'node:stream/promises';
+import crypto, { createHmac, timingSafeEqual } from 'node:crypto';
 
 // We use any as a valid input type
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -33241,20 +33241,24 @@ function combine(patterns, getPattern = (pat) => pat.pattern()) {
   function* parser() {
     const pats = patterns.map(getPattern);
     const counter = lineCounter();
+    const matches = [];
 
     while (true) {
-      const token = yield;
+      const token = yield matches;
+      matches.length = 0;
       const [endLine, endColumn] = counter.next(token).value;
       for (let i = 0; i < pats.length; i++) {
-        const next = pats[i].next(token);
-        if (next.done) {
-          const [startLine, startColumn] = counter.startOf(next.value);
-          return {
+        if (pats[i] == null) continue;
+        const result = pats[i].next(token);
+        if (result.done) {
+          const [startLine, startColumn] = counter.startOf(result.value);
+          matches.push({
             match: patterns[i],
             position: {
               startLine, startColumn, endLine, endColumn
             }
-          };
+          });
+          pats[i] = null;
         }
       }
     }
@@ -33302,34 +33306,24 @@ class Tokenize extends Transform {
   }
 }
 
-function parse(stream, pattern) {
-  return new Promise((resolve, reject) => {
-    const scanner = new class extends Transform {
-      constructor() {
-        super({ objectMode: true });
-      }
-
-      _transform(data, encoding, callback) {
-        const res = pattern.next(data);
-        if (res.done) {
-          stream.destroy();
-          resolve(res.value);
+async function parse(stream, pattern) {
+  let done = false;
+  const matches = [];
+  const scanner = new Writable({
+    objectMode: true,
+    write(chunk, encoding, callback) {
+      if (!done) {
+        const result = pattern.next(chunk);
+        done = result.done;
+        if (result.value) {
+          matches.push(...(Array.isArray(result.value) ? result.value : [result.value]));
         }
-        callback();
       }
-
-      _flush(callback) {
-        resolve(null);
-        callback();
-      }
-    };
-    stream
-      .on('error', reject)
-      .pipe(new Tokenize())
-      .on('error', reject)
-      .pipe(scanner)
-      .on('error', reject);
+      callback();
+    }
   });
+  await pipeline(stream, new Tokenize(), scanner);
+  return matches;
 }
 
 function newReport(groups) {
@@ -33379,9 +33373,9 @@ async function scanFile(patterns, root, fname, report) {
   console.log(`Scanning ${fname}...`);
   const fullPath = path.resolve(root, fname);
   const contents = fs__default.createReadStream(fullPath);
-  let match = null;
+  let matches = [];
   try {
-    match = await parse(contents, patterns.pattern());
+    matches = await parse(contents, patterns.pattern());
   } catch (e) {
     if (e instanceof BinaryStream) {
       console.log(`${fname} appears to be a binary file, skipping`);
@@ -33394,8 +33388,8 @@ async function scanFile(patterns, root, fname, report) {
       uri: `${fname}`
     }
   }));
-  if (match != null) {
-    report.runs[0].results.push(getResult(match, fname));
+  if (matches.length > 0) {
+    report.runs[0].results.push(...matches.map(match => getResult(match, fname)));
   }
 }
 
