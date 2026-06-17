@@ -39,10 +39,6 @@ export async function fetchPatterns(octokit) {
     .map(result => JSON.parse(result.data));
 }
 
-function toRegex(pat) {
-  return pat.split('*').map(str => RegExp.escape(str)).join('[^./]*');
-}
-
 function hashCode(str) {
   let hash = 0;
   for (let i = 0, len = str.length; i < len; i++) {
