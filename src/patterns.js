@@ -1,5 +1,6 @@
 import { App } from 'octokit';
 import crypto from 'node:crypto';
+import { combine, compile } from './parser.js';
 
 export async function getOctokit({ privateKey, appId, installId }) {
   const key = crypto
@@ -52,22 +53,21 @@ function hashCode(str) {
   return hash;
 }
 
+
 export function getPatterns(rawPatterns) {
-  const groups = {};
   const patterns = rawPatterns
     .flatMap(({ id, name, patterns }, i) => {
       return patterns.map(rawPattern => ({
         groupId: id,
         groupName: name,
         rawPattern,
-        pattern: toRegex(rawPattern),
+        pattern: compile(rawPattern),
         hash: hashCode(rawPattern)
       }));
     });
-  const master = new RegExp(`(${patterns.map(pat => pat.pattern).join('|')})`, 'gi');
+  const pattern = combine(patterns);
   return {
     groups: rawPatterns.map(({ id, name }) => ({ id, name })),
-    master,
-    patterns: patterns.map(pat => Object.assign(pat, { pattern: new RegExp(pat.pattern, 'gi') })),
+    pattern
   };
 }

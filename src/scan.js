@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { glob } from 'glob';
+import { parse, BinaryStream } from './parser.js';
 
 function newReport(groups) {
   return {
@@ -30,9 +31,9 @@ function newReport(groups) {
 
 export async function scan(patterns, globs, ignores, root, whitelist) {
   root = path.resolve(root ?? '.');
-  ignores = ignores ?  ignores.split(',').map(ign => path.join(root, ign)) : [];
+  ignores = ignores ? ignores.split(',').map(ign => path.join(root, ign)) : [];
   globs = globs.split(',').map(pat => path.join(root, pat));
-  console.info('Starting scan', { globs, ignores, whitelist: Array.from(whitelist)});
+  console.info('Starting scan', { globs, ignores, whitelist: whitelist && Array.from(whitelist) });
   const report = newReport(patterns.groups);
   for (const pattern of globs) {
     for (const fname of await glob(pattern, { ignore: ignores, dot: true })) {
@@ -46,57 +47,49 @@ export async function scan(patterns, globs, ignores, root, whitelist) {
 }
 
 async function scanFile(patterns, root, fname, report) {
-  const fullPath = path.resolve(root, fname);
-  let contents = await fs.promises.readFile(fullPath);
-  if (contents.includes(0, 0, 8 * 1024)) {
-    console.info(`${fname} appears to be a binary file, skipping`);
-    return;
-  }
   console.log(`Scanning ${fname}...`);
+  const fullPath = path.resolve(root, fname);
+  const contents = fs.createReadStream(fullPath);
+  let match = null;
+  try {
+    match = await parse(contents, patterns.pattern());
+  } catch (e) {
+    if (e instanceof BinaryStream) {
+      console.log(`${fname} appears to be a binary file, skipping`);
+    } else {
+      throw e;
+    }
+  }
   report.runs[0].artifacts.push(({
     location: {
       uri: `${fname}`
     }
   }));
-  contents = contents.toString();
-  if (patterns.master.test(contents)) {
-    report.runs[0].results.push(...(await getViolations(patterns, contents, fname)));
+  if (match != null) {
+    report.runs[0].results.push(getResult(match, fname));
   }
 }
 
-function getPosition(str) {
-  const lines = str.split(/\r?\n/);
-  return [lines.length, lines[lines.length - 1].length + 1];
-}
+function getResult({match, position}, fileName) {
+  return {
+    level: 'warning',
+    message: {
+      text: `Domain flagged by ${match.groupName}`
+    },
+    ruleId: match.groupId,
+    partialFingerprints: {
+      primaryLocationLineHash: `${fileName}/${match.groupId}/${match.hash}`
+    },
+    locations: [
+      {
+        physicalLocation: {
+          artifactLocation: {
+            uri: `${fileName}`
+          },
+          region: position,
+        }
+      }
+    ]
+  };
 
-async function getViolations(patterns, fileContents, fileName) {
-  const violations = [];
-  for (const pat of patterns.patterns) {
-    const match = pat.pattern.exec(fileContents);
-    if (match != null) {
-      const [startLine, startColumn] = getPosition(fileContents.substring(0, match.index));
-      const [endLine, endColumn] = getPosition(fileContents.substring(0, match.index + match[0].length));
-      violations.push({
-        level: 'error',
-        message: {
-          text: `Domain blacklisted by '${pat.groupName}'`
-        },
-        ruleId: pat.groupId,
-        partialFingerprints: {
-          primaryLocationLineHash: `${fileName}/${pat.groupId}/${pat.hash}`
-        },
-        locations: [
-          {
-            physicalLocation: {
-              artifactLocation: {
-                uri: `${fileName}`
-              },
-              region: { startLine, startColumn, endLine, endColumn },
-            }
-          }
-        ]
-      });
-    }
-  }
-  return violations;
 }
