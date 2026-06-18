@@ -33169,34 +33169,34 @@ function compile(rawPattern) {
   const pattern = rawPattern.toLowerCase().split('.');
 
   function* parser() {
-    let pos = 0;
-    let start = null;
-    let advance = false;
+    const matching = new Map();
     let counter = 0;
-    while (true) {
-      const token = yield;
+    let match = null;
 
-      function matches() {
-        return (pattern[pos] === '*' && /^[\w-]+$/.test(token))  || token === pattern[pos];
+    while (true) {
+      const token = yield match;
+      match = null;
+
+      function matches(i) {
+        return pattern[i] === '*' || token === pattern[i];
       }
 
-      if (token === '.') {
-        if (advance) {
-          advance = false;
-          pos++;
-        }
+      if (!/^[\w-]+$/.test(token)) {
+        if (token !== '.') matching.clear();
       } else {
-        advance = false;
-        if (!matches()) {
-          pos = 0;
-        }
-        if (matches()) {
-          if (pos === 0) {
-            start = counter;
-          } else if (pos === pattern.length - 1) {
-            return start;
+        matching.set(counter, -1);
+        for (let [start, pos] of matching.entries()) {
+          if (matches(pos + 1)) {
+            pos++;
+            if (pos === pattern.length - 1) {
+              match = start;
+              matching.delete(start);
+            } else {
+              matching.set(start, pos);
+            }
+          } else {
+            matching.delete(start);
           }
-          advance = true;
         }
       }
       counter++;
@@ -33250,7 +33250,7 @@ function combine(patterns, getPattern = (pat) => pat.pattern()) {
       for (let i = 0; i < pats.length; i++) {
         if (pats[i] == null) continue;
         const result = pats[i].next(token);
-        if (result.done) {
+        if (result.value != null) {
           const [startLine, startColumn] = counter.startOf(result.value);
           matches.push({
             match: patterns[i],
@@ -33258,7 +33258,6 @@ function combine(patterns, getPattern = (pat) => pat.pattern()) {
               startLine, startColumn, endLine, endColumn
             }
           });
-          pats[i] = null;
         }
       }
     }
@@ -33286,14 +33285,13 @@ class Tokenize extends Transform {
       callback(new BinaryStream());
       return;
     }
-    const tokens = ((this.last ?? '') + data.toString())
-      .split(/([.\n]|[^.\n\w-]+)/)
-      .filter(token => token !== '')
-      .map(token => token.toLowerCase());
-    tokens.forEach((token, i) => {
-      if (i === tokens.length - 1) {
-        this.last = token;
-      } else {
+    const tokens = ((this.last ?? '') + data.toString().toLowerCase())
+      .split(/([.\n]|[^.\n\w-]+)/);
+    do {
+      this.last = tokens.pop();
+    } while (this.last.length === 0);
+    tokens.forEach(token => {
+      if (token.length > 0) {
         this.push(token);
       }
     });
@@ -33388,12 +33386,21 @@ async function scanFile(patterns, root, fname, report) {
       uri: `${fname}`
     }
   }));
-  if (matches.length > 0) {
-    report.runs[0].results.push(...matches.map(match => getResult(match, fname)));
-  }
+  Object.values(
+    matches.reduce((byPattern, match) => {
+      if (!byPattern.hasOwnProperty(match.match.rawPattern)) {
+        byPattern[match.match.rawPattern] = [];
+      }
+      byPattern[match.match.rawPattern].push(match);
+      return byPattern;
+    }, {})
+  ).map((matches) => getResult(matches, fname))
+    .forEach(result => report.runs[0].results.push(result));
 }
 
-function getResult({match, position}, fileName) {
+function getResult(matches, fileName) {
+  const match = matches[0].match;
+  const positions = matches.map(match => match.position);
   return {
     level: 'warning',
     message: {
@@ -33403,16 +33410,15 @@ function getResult({match, position}, fileName) {
     partialFingerprints: {
       primaryLocationLineHash: `${fileName}/${match.groupId}/${match.hash}`
     },
-    locations: [
-      {
+    locations: positions.map(region => ({
         physicalLocation: {
           artifactLocation: {
             uri: `${fileName}`
           },
-          region: position,
+          region,
         }
       }
-    ]
+    ))
   };
 
 }
