@@ -65,12 +65,21 @@ async function scanFile(patterns, root, fname, report) {
       uri: `${fname}`
     }
   }));
-  if (matches.length > 0) {
-    report.runs[0].results.push(...matches.map(match => getResult(match, fname)));
-  }
+  Object.values(
+    matches.reduce((byPattern, match) => {
+      if (!byPattern.hasOwnProperty(match.match.rawPattern)) {
+        byPattern[match.match.rawPattern] = [];
+      }
+      byPattern[match.match.rawPattern].push(match);
+      return byPattern;
+    }, {})
+  ).map((matches) => getResult(matches, fname))
+    .forEach(result => report.runs[0].results.push(result));
 }
 
-function getResult({match, position}, fileName) {
+function getResult(matches, fileName) {
+  const match = matches[0].match;
+  const positions = matches.map(match => match.position);
   return {
     level: 'warning',
     message: {
@@ -80,16 +89,15 @@ function getResult({match, position}, fileName) {
     partialFingerprints: {
       primaryLocationLineHash: `${fileName}/${match.groupId}/${match.hash}`
     },
-    locations: [
-      {
+    locations: positions.map(region => ({
         physicalLocation: {
           artifactLocation: {
             uri: `${fileName}`
           },
-          region: position,
+          region,
         }
       }
-    ]
+    ))
   };
 
 }

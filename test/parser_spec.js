@@ -22,48 +22,65 @@ describe('parser', () => {
     it('can match', () => {
       const pat = compile('test.com')();
       const result = feed(pat, ['test', '.', 'com']);
-      expect(result.done).to.be.true;
       expect(result.value).to.eql(0);
     });
+
+    it('can match single tokens', () => {
+      const pat = compile('test')();
+      const result = feed(pat, ['filler', 'test']);
+      expect(result.value).to.eql(1);
+    })
 
     it('can match in middle of stream', () => {
       const pat = compile('test.com')();
       const result = feed(pat, ['not', '\n', 'relevant', '\r', 'test', '.', 'com']);
-      expect(result.done).to.be.true;
       expect(result.value).to.eql(4);
     });
 
     it('can match after partial match', () => {
       const pat = compile('test.com')();
       const result = feed(pat, ['test', '.', '\n', 'test', '.', 'com']);
-      expect(result.done).to.be.true;
       expect(result.value).to.eql(3);
     });
+
+    it('can match overlapping patterns', () => {
+      const pat = compile('*.*.com')();
+      let result = feed(pat, ['test', '.', 'com', '.', 'com']);
+      expect(result.value).to.eql(0);
+      result = feed(pat, ['.', 'com']);
+      expect(result.value).to.eql(2);
+    })
 
     it('stops matching on a false start', () => {
       const pat = compile('test.com')();
       const result = feed(pat, ['test', 'not', '.', 'com']);
-      expect(result.done).to.be.false;
+      expect(result.value).to.be.null;
     })
 
     it('can match during a match', () => {
       const pat = compile('test.com')();
       const result = feed(pat, ['test', '.', 'test', '.', 'com']);
-      expect(result.done).to.be.true;
       expect(result.value).to.eql(2);
     });
+
+    it('can match multiple occurrences', () => {
+      const pat = compile('test.com')();
+      let result = feed(pat, ['test', '.', 'com']);
+      expect(result.value).to.eql(0);
+      result = feed(pat, ['filler', 'test', '.', 'com']);
+      expect(result.value).to.eql(4);
+    })
 
     it('can match star', () => {
       const pat = compile('*.test.com')();
       const result = feed(pat, ['sub', '.', 'test', '.', 'sub', '.', 'test', '.', 'com']);
-      expect(result.done).to.be.true;
       expect(result.value).to.eql(4);
     });
 
     it('does not match star on non-alphanumeric tokens', () => {
       const pat = compile('*.test.com')();
       const result = feed(pat, ['?', '.', 'test', '.', 'com']);
-      expect(result.done).to.be.false;
+      expect(result.value).to.be.null;
     })
   });
   describe('lineCounter', () => {
