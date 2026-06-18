@@ -33178,12 +33178,10 @@ function compile(rawPattern) {
       match = null;
 
       function matches(i) {
-        return pattern[i] === '*' || token === pattern[i];
+        return pattern[i] === '*' || token.text.toLowerCase() === pattern[i];
       }
 
-      if (!/^[\w-]+$/.test(token)) {
-        if (token !== '.') matching.clear();
-      } else {
+      if (token.type === Token.ALPHANUMERIC) {
         matching.set(counter, -1);
         for (let [start, pos] of matching.entries()) {
           if (matches(pos + 1)) {
@@ -33198,6 +33196,8 @@ function compile(rawPattern) {
             matching.delete(start);
           }
         }
+      } else {
+        if (token.text !== '.') matching.clear();
       }
       counter++;
     }
@@ -33246,7 +33246,7 @@ function combine(patterns, getPattern = (pat) => pat.pattern()) {
     while (true) {
       const token = yield matches;
       matches.length = 0;
-      const [endLine, endColumn] = counter.next(token).value;
+      const [endLine, endColumn] = counter.next(token.text).value;
       for (let i = 0; i < pats.length; i++) {
         if (pats[i] == null) continue;
         const result = pats[i].next(token);
@@ -33273,6 +33273,28 @@ function combine(patterns, getPattern = (pat) => pat.pattern()) {
 class BinaryStream extends Error {
 }
 
+class Token {
+  static BREAK = 2;
+  static ALPHANUMERIC = 3;
+  static OTHER = 4;
+
+  constructor(type, text) {
+    this.type = type;
+    this.text = text;
+  }
+
+  static pattern() {
+    return /(([\n.])|([\w-]+)|([^.\n\w-]+))/g
+  }
+
+  static from(match) {
+    const type = match[this.BREAK] ? this.BREAK
+      : match[this.ALPHANUMERIC] ? this.ALPHANUMERIC
+        : this.OTHER;
+    return new this(type, match[0]);
+  }
+}
+
 class Tokenize extends Transform {
   last = null;
 
@@ -33285,16 +33307,16 @@ class Tokenize extends Transform {
       callback(new BinaryStream());
       return;
     }
-    const tokens = ((this.last ?? '') + data.toString().toLowerCase())
-      .split(/([.\n]|[^.\n\w-]+)/);
+    const text = (this.last?.text ?? '') + data.toString();
+    const pat = Token.pattern();
+    let token;
     do {
-      this.last = tokens.pop();
-    } while (this.last.length === 0);
-    tokens.forEach(token => {
-      if (token.length > 0) {
+      if (token != null) {
         this.push(token);
       }
-    });
+      token = Token.from(pat.exec(text));
+    } while (pat.lastIndex < text.length);
+    this.last = token;
     callback();
   }
 
@@ -33376,7 +33398,7 @@ async function scanFile(patterns, root, fname, report) {
     matches = await parse(contents, patterns.pattern());
   } catch (e) {
     if (e instanceof BinaryStream) {
-      console.log(`${fname} appears to be a binary file, skipping`);
+      console.warn(`${fname} appears to be a binary file, skipping`);
     } else {
       throw e;
     }

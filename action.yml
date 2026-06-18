@@ -14,7 +14,7 @@ inputs:
   ignores:
     description: Glob patterns to ignore, comma-separated
     required: false
-    default: ''
+    default: '.git/**'
   root:
     description: Source root
     required: false

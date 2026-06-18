@@ -55,7 +55,7 @@ async function scanFile(patterns, root, fname, report) {
     matches = await parse(contents, patterns.pattern());
   } catch (e) {
     if (e instanceof BinaryStream) {
-      console.log(`${fname} appears to be a binary file, skipping`);
+      console.warn(`${fname} appears to be a binary file, skipping`);
     } else {
       throw e;
     }

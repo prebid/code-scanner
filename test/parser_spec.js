@@ -1,18 +1,18 @@
 import { expect } from 'chai';
-import { BinaryStream, combine, compile, lineCounter, Tokenize, parse } from '../src/parser.js';
+import { BinaryStream, Token, combine, compile, lineCounter, Tokenize, parse } from '../src/parser.js';
 import { Writable, Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { Buffer } from 'node:buffer';
 import assert from 'node:assert';
 
 describe('parser', () => {
-  function feed(target, tokens) {
+  function feed(target, tokens, tokenize = true) {
     let next;
     for (const token of tokens) {
       if (next != null) {
         expect(next.done).to.be.false;
       }
-      next = target.next(token);
+      next = target.next(tokenize ? Token.from(Token.pattern().exec(token)) : token);
     }
     return next;
   }
@@ -94,7 +94,7 @@ describe('parser', () => {
       expect(counter.next('\n').value).to.eql([2, 1]);
     });
     it('keeps track of tokens position', () => {
-      feed(counter, ['first line', '\n', 'second', 'line', '\n', 'third line']);
+      feed(counter, ['first line', '\n', 'second', 'line', '\n', 'third line'], false);
       expect(counter.startOf(3)).to.eql([2, 7]);
     });
   });
@@ -190,16 +190,34 @@ describe('parser', () => {
     }
 
     it('splits non-alphanumeric characters', async () => {
-      expect(await pipe([Buffer.from('test.com', 'utf8')])).to.eql(['test', '.', 'com']);
+      expect(await pipe([Buffer.from('test.com', 'utf8')])).to.eql([
+        new Token(Token.ALPHANUMERIC, 'test'),
+        new Token(Token.BREAK, '.'),
+        new Token(Token.ALPHANUMERIC, 'com')
+      ]);
     });
     it('always isolates dots and newlines', async () => {
-      expect(await pipe([Buffer.from('??.++\n--', 'utf8')])).to.eql(['??', '.', '++', '\n', '--']);
+      expect(await pipe([Buffer.from('??.++\n--', 'utf8')])).to.eql([
+        new Token(Token.OTHER, '??'),
+        new Token(Token.BREAK, '.'),
+        new Token(Token.OTHER, '++'),
+        new Token(Token.BREAK, '\n'),
+        new Token(Token.ALPHANUMERIC, '--')
+      ]);
     });
     it('does not split on dashes', async () => {
-      expect(await pipe([Buffer.from('test-example.com', 'utf-8')])).to.eql(['test-example', '.', 'com']);
+      expect(await pipe([Buffer.from('test-example.com', 'utf-8')])).to.eql([
+        new Token(Token.ALPHANUMERIC, 'test-example'),
+        new Token(Token.BREAK, '.'),
+        new Token(Token.ALPHANUMERIC, 'com')
+      ]);
     });
     it('does not split on chunk boundary', async () => {
-      expect(await pipe([Buffer.from('te', 'utf-8'), Buffer.from('st.com', 'utf-8')])).to.eql(['test', '.', 'com']);
+      expect(await pipe([Buffer.from('te', 'utf-8'), Buffer.from('st.com', 'utf-8')])).to.eql([
+        new Token(Token.ALPHANUMERIC, 'test'),
+        new Token(Token.BREAK, '.'),
+        new Token(Token.ALPHANUMERIC, 'com')
+      ]);
     });
     it('throws on zeroes', async () => {
       try {
