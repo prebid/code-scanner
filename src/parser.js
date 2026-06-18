@@ -1,5 +1,5 @@
 import { Writable, Transform } from 'node:stream';
-import {pipeline} from 'node:stream/promises';
+import { pipeline } from 'node:stream/promises';
 
 
 export function compile(rawPattern) {
@@ -14,7 +14,7 @@ export function compile(rawPattern) {
       const token = yield;
 
       function matches() {
-        return (pattern[pos] === '*' && /^[\w-]+$/.test(token))  || token === pattern[pos];
+        return (pattern[pos] === '*' && /^[\w-]+$/.test(token)) || token === pattern[pos];
       }
 
       if (token === '.') {
@@ -96,7 +96,7 @@ export function combine(patterns, getPattern = (pat) => pat.pattern()) {
             position: {
               startLine, startColumn, endLine, endColumn
             }
-          })
+          });
           pats[i] = null;
         }
       }
@@ -125,14 +125,13 @@ export class Tokenize extends Transform {
       callback(new BinaryStream());
       return;
     }
-    const tokens = ((this.last ?? '') + data.toString())
-      .split(/([.\n]|[^.\n\w-]+)/)
-      .filter(token => token !== '')
-      .map(token => token.toLowerCase());
-    tokens.forEach((token, i) => {
-      if (i === tokens.length - 1) {
-        this.last = token;
-      } else {
+    const tokens = ((this.last ?? '') + data.toString().toLowerCase())
+      .split(/([.\n]|[^.\n\w-]+)/);
+    do {
+      this.last = tokens.pop();
+    } while (this.last.length === 0);
+    tokens.forEach(token => {
+      if (token.length > 0) {
         this.push(token);
       }
     });
@@ -160,7 +159,7 @@ export async function parse(stream, pattern) {
       }
       callback();
     }
-  })
+  });
   await pipeline(stream, new Tokenize(), scanner);
   return matches;
 }
