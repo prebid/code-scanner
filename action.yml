@@ -28,6 +28,14 @@ inputs:
   installationId:
     description: App installation Id
     required: true
+  pr:
+    description: >
+      PR number to report results against. Defaults to the triggering pull request, if any;
+      set it when running from workflow_run.
+    required: false
+  sha:
+    description: Commit that was checked out and scanned. Defaults to the PR's current head.
+    required: false
 
 runs:
   using: "node24"

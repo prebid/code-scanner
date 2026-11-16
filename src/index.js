@@ -28,7 +28,7 @@ try {
       }
     }, params)
   }
-  const prNo = github.context.payload.pull_request?.number;
+  const prNo = core.getInput('pr') || github.context.payload.pull_request?.number;
   let commit_sha;
   let ref;
   let whitelist;
@@ -41,7 +41,7 @@ try {
     const params = requestParams({ prNo });
     const pr = await octokit.request('GET /repos/{owner}/{repo}/pulls/{prNo}', params);
     const files = await octokit.request('GET /repos/{owner}/{repo}/pulls/{prNo}/files?per_page=100', params)
-    commit_sha = pr.data.head.sha;
+    commit_sha = core.getInput('sha') || pr.data.head.sha;
     ref = `refs/pull/${prNo}/head`;
     whitelist = files.data.length >= 100 ? null : new Set(files.data.map(({filename}) => filename));
   }
